@@ -1,15 +1,26 @@
 package com.smalltest.smalltest;
 
+import com.cloudbees.plugins.credentials.CredentialsMatcher;
+import com.cloudbees.plugins.credentials.CredentialsMatchers;
+import com.cloudbees.plugins.credentials.CredentialsProvider;
+import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
+import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
+import hudson.model.Item;
+import hudson.security.ACL;
 import hudson.tasks.*;
 import hudson.tasks.junit.TestResult;
 import hudson.tasks.junit.TestResultAction;
 import hudson.tasks.test.AggregatedTestResultAction;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
+import jenkins.model.Jenkins;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -18,6 +29,8 @@ import javax.servlet.ServletException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.google.common.collect.Lists.newArrayList;
 
 /**
  * Sample {@link Builder}.
@@ -39,16 +52,13 @@ public class SmallTestBuilder extends Notifier {
 
   private final String jiraUrl;
 
-  private final String username;
-
-  private final String password;
+  private final String credentialsId;
 
   // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
   @DataBoundConstructor
-  public SmallTestBuilder(String jiraUrl, String username, String password) {
+  public SmallTestBuilder(String jiraUrl, String credentialsId) {
     this.jiraUrl = jiraUrl;
-    this.username = username;
-    this.password = password;
+    this.credentialsId = credentialsId;
   }
 
   /**
@@ -58,12 +68,8 @@ public class SmallTestBuilder extends Notifier {
     return jiraUrl;
   }
 
-  public String getUsername() {
-    return username;
-  }
-
-  public String getPassword() {
-    return password;
+  public String getCredentialsId() {
+    return credentialsId;
   }
 
   @Override
@@ -74,6 +80,15 @@ public class SmallTestBuilder extends Notifier {
 
       // This also shows how you can consult the global configuration of the builder
       listener.getLogger().println("Parsing the test results");
+
+      List<DomainRequirement> domainRequirements = newArrayList();
+      List<StandardUsernamePasswordCredentials> credentialsList = CredentialsProvider.lookupCredentials(
+              StandardUsernamePasswordCredentials.class, Jenkins.getInstance(), ACL.SYSTEM, domainRequirements);
+      CredentialsMatcher matcher = CredentialsMatchers.allOf(CredentialsMatchers.withId(credentialsId));
+      StandardUsernamePasswordCredentials credentials = CredentialsMatchers.firstOrNull(credentialsList, matcher);
+
+      String username = credentials.getUsername();
+      String password = credentials.getPassword().getPlainText();
 
       TestResultAction resultAction = build.getAction(TestResultAction.class);
       List<TestResult> testResults = new ArrayList<>();
@@ -171,6 +186,29 @@ public class SmallTestBuilder extends Notifier {
      */
     public String getDisplayName() {
       return "Submit test results to SmallTest";
+    }
+
+    public ListBoxModel doFillCredentialsIdItems(
+            @AncestorInPath Item item,
+            @QueryParameter String credentialsId) {
+      StandardListBoxModel result = new StandardListBoxModel();
+      if (item == null) {
+        if (!Jenkins.getActiveInstance().hasPermission(Jenkins.ADMINISTER)) {
+          return result.includeCurrentValue(credentialsId);
+        }
+      } else {
+        if (!item.hasPermission(Item.EXTENDED_READ)
+                && !item.hasPermission(CredentialsProvider.USE_ITEM)) {
+          return result.includeCurrentValue(credentialsId);
+        }
+      }
+      List<DomainRequirement> domainRequirements = newArrayList();
+      CredentialsMatcher matcher = CredentialsMatchers.anyOf(
+              CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class));
+      return result
+              .includeEmptyValue()
+              .includeMatchingAs(ACL.SYSTEM, item, StandardUsernamePasswordCredentials.class, domainRequirements, matcher)
+              .includeCurrentValue(credentialsId);
     }
 
 //        @Override
