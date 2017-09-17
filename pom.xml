@@ -32,7 +32,6 @@
 
   <name>SmallTest Plugin</name>
   <description>This plugin uploads Jenkins test results to SmallTest.</description>
-  <url>https://smalltestblog.wordpress.com/</url>
 
   <!-- The default licence for Jenkins OSS Plugins is MIT. Substitute for the applicable one if needed. -->
 
