@@ -20,7 +20,8 @@ public class JiraLogService {
   public void submitTestLogs(
           String jiraUrl, String username, String password, AbstractBuild build, List<TestResult> testResults)
           throws Exception {
-    String rootUrl = Jenkins.getInstance().getRootUrl();
+    Jenkins instance = Jenkins.getInstance();
+    String rootUrl = instance == null ? "" : instance.getRootUrl();
     String buildUrl = rootUrl + build.getUrl();
     Set<String> processedNames = new HashSet<>();
     for (TestResult testResult : testResults) {
@@ -93,7 +94,7 @@ public class JiraLogService {
           throws Exception {
     String authenticate = username + ":" + password;
     Map<String, String> headers = new HashMap<>();
-    headers.put("Authorization", "Basic " + Base64.encodeBase64String(authenticate.getBytes()));
+    headers.put("Authorization", "Basic " + Base64.encodeBase64String(authenticate.getBytes("UTF-8")));
     HttpEntity entity = HttpUtils.toEncodedFormEntity(testLog);
 
     String url = jiraUrl + "/rest/smalltest/1/test-logs";

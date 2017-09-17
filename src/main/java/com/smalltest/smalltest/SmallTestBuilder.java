@@ -86,30 +86,33 @@ public class SmallTestBuilder extends Notifier {
               StandardUsernamePasswordCredentials.class, Jenkins.getInstance(), ACL.SYSTEM, domainRequirements);
       CredentialsMatcher matcher = CredentialsMatchers.allOf(CredentialsMatchers.withId(credentialsId));
       StandardUsernamePasswordCredentials credentials = CredentialsMatchers.firstOrNull(credentialsList, matcher);
-
-      String username = credentials.getUsername();
-      String password = credentials.getPassword().getPlainText();
-
-      TestResultAction resultAction = build.getAction(TestResultAction.class);
-      List<TestResult> testResults = new ArrayList<>();
-      if (resultAction != null) {
-        testResults.add(resultAction.getResult());
+      if (credentials == null) {
+        listener.getLogger().println("Credentials not found");
       } else {
-        AggregatedTestResultAction aggregatedTestResultAction = build.getAction(AggregatedTestResultAction.class);
-        if (aggregatedTestResultAction != null) {
-          List<AggregatedTestResultAction.ChildReport> childReports = aggregatedTestResultAction.getResult();
-          if (childReports != null) {
-            for (AggregatedTestResultAction.ChildReport childReport : childReports) {
-              if (childReport.result instanceof TestResult) {
-                testResults.add((TestResult) childReport.result);
+        String username = credentials.getUsername();
+        String password = credentials.getPassword().getPlainText();
+
+        TestResultAction resultAction = build.getAction(TestResultAction.class);
+        List<TestResult> testResults = new ArrayList<>();
+        if (resultAction != null) {
+          testResults.add(resultAction.getResult());
+        } else {
+          AggregatedTestResultAction aggregatedTestResultAction = build.getAction(AggregatedTestResultAction.class);
+          if (aggregatedTestResultAction != null) {
+            List<AggregatedTestResultAction.ChildReport> childReports = aggregatedTestResultAction.getResult();
+            if (childReports != null) {
+              for (AggregatedTestResultAction.ChildReport childReport : childReports) {
+                if (childReport.result instanceof TestResult) {
+                  testResults.add((TestResult) childReport.result);
+                }
               }
             }
           }
         }
-      }
-      if (!testResults.isEmpty()) {
-        listener.getLogger().println("Submitting test results to " + jiraUrl + " on behalf of " + username);
-        new JiraLogService().submitTestLogs(jiraUrl, username, password, build, testResults);
+        if (!testResults.isEmpty()) {
+          listener.getLogger().println("Submitting test results to " + jiraUrl + " on behalf of " + username);
+          new JiraLogService().submitTestLogs(jiraUrl, username, password, build, testResults);
+        }
       }
     } catch (Exception e) {
       listener.getLogger().println("Failed to submit test results " + e);
@@ -195,20 +198,22 @@ public class SmallTestBuilder extends Notifier {
       if (item == null) {
         if (!Jenkins.getActiveInstance().hasPermission(Jenkins.ADMINISTER)) {
           return result.includeCurrentValue(credentialsId);
+        } else {
+          return result;
         }
       } else {
         if (!item.hasPermission(Item.EXTENDED_READ)
                 && !item.hasPermission(CredentialsProvider.USE_ITEM)) {
           return result.includeCurrentValue(credentialsId);
         }
+        List<DomainRequirement> domainRequirements = newArrayList();
+        CredentialsMatcher matcher = CredentialsMatchers.anyOf(
+                CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class));
+        return result
+                .includeEmptyValue()
+                .includeMatchingAs(ACL.SYSTEM, item, StandardUsernamePasswordCredentials.class, domainRequirements, matcher)
+                .includeCurrentValue(credentialsId);
       }
-      List<DomainRequirement> domainRequirements = newArrayList();
-      CredentialsMatcher matcher = CredentialsMatchers.anyOf(
-              CredentialsMatchers.instanceOf(StandardUsernamePasswordCredentials.class));
-      return result
-              .includeEmptyValue()
-              .includeMatchingAs(ACL.SYSTEM, item, StandardUsernamePasswordCredentials.class, domainRequirements, matcher)
-              .includeCurrentValue(credentialsId);
     }
 
 //        @Override

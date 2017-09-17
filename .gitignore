@@ -2,3 +2,5 @@ work
 .idea
 *.iml
 target
+pomm.xml.releaseBackup
+release.properties
