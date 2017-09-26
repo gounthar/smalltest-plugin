@@ -7,6 +7,7 @@ import hudson.tasks.junit.CaseResult;
 import hudson.tasks.junit.ClassResult;
 import hudson.tasks.junit.SuiteResult;
 import hudson.tasks.junit.TestResult;
+import jenkins.model.Jenkins;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpEntity;
 
@@ -19,7 +20,9 @@ public class JiraLogService {
   public void submitTestLogs(
           String jiraUrl, String username, String password, AbstractBuild build, List<TestResult> testResults)
           throws Exception {
-    String buildUrl = build.getAbsoluteUrl();
+    Jenkins instance = Jenkins.getInstance();
+    String rootUrl = instance == null ? "" : instance.getRootUrl();
+    String buildUrl = rootUrl + build.getUrl();
     Set<String> processedNames = new HashSet<>();
     for (TestResult testResult : testResults) {
       Collection<SuiteResult> suiteResults = testResult.getSuites();
