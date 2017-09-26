@@ -9,6 +9,7 @@ import hudson.tasks.junit.SuiteResult;
 import hudson.tasks.junit.TestResult;
 import jenkins.model.Jenkins;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpEntity;
 
 import java.util.*;
@@ -22,7 +23,8 @@ public class JiraLogService {
           throws Exception {
     Jenkins instance = Jenkins.getInstance();
     String rootUrl = instance == null ? "" : instance.getRootUrl();
-    String buildUrl = rootUrl + build.getUrl();
+    String buildUrl = StringUtils.defaultIfBlank(build.getUrl(), "");
+    String absoluteBuildUrl = rootUrl + buildUrl;
     Set<String> processedNames = new HashSet<>();
     for (TestResult testResult : testResults) {
       Collection<SuiteResult> suiteResults = testResult.getSuites();
@@ -42,7 +44,7 @@ public class JiraLogService {
               } else if (classResult.getPassCount() > 0) {
                 status = "PASSED";
               }
-              submitToJira(jiraUrl, username, password, buildUrl, classFullName, issueKey, status);
+              submitToJira(jiraUrl, username, password, absoluteBuildUrl, classFullName, issueKey, status);
             }
           }
           String caseFullName = caseResult.getFullName();
@@ -57,7 +59,7 @@ public class JiraLogService {
               } else if (caseResult.isPassed()) {
                 status = "PASSED";
               }
-              submitToJira(jiraUrl, username, password, buildUrl, caseFullName, issueKey, status);
+              submitToJira(jiraUrl, username, password, absoluteBuildUrl, caseFullName, issueKey, status);
             }
           }
         }
