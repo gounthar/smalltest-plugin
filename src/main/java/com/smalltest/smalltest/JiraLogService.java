@@ -9,7 +9,6 @@ import hudson.tasks.junit.SuiteResult;
 import hudson.tasks.junit.TestResult;
 import jenkins.model.Jenkins;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpEntity;
 
 import java.util.*;
@@ -23,7 +22,13 @@ public class JiraLogService {
           throws Exception {
     Jenkins instance = Jenkins.getInstance();
     String rootUrl = instance == null ? "" : instance.getRootUrl();
-    String buildUrl = StringUtils.defaultIfBlank(build.getUrl(), "");
+    if (rootUrl == null) {
+      rootUrl = "";
+    }
+    String buildUrl = build.getUrl();
+    if (buildUrl == null) {
+      buildUrl = "";
+    }
     String absoluteBuildUrl = rootUrl + buildUrl;
     Set<String> processedNames = new HashSet<>();
     for (TestResult testResult : testResults) {
