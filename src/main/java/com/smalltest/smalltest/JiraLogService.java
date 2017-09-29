@@ -26,9 +26,6 @@ public class JiraLogService {
       rootUrl = "";
     }
     String buildUrl = build.getUrl();
-    if (buildUrl == null) {
-      buildUrl = "";
-    }
     String absoluteBuildUrl = rootUrl + buildUrl;
     Set<String> processedNames = new HashSet<>();
     for (TestResult testResult : testResults) {
